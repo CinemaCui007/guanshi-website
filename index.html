@@ -370,7 +370,7 @@
         .process-arrow { font-size: 20px; color: var(--text-dim); flex-shrink: 0; }
         
         @media (max-width: 768px) {
-            .why-grid { grid-template-columns: repeat(2, 1fr); }
+            .why-grid { grid-template-columns: 1fr; }
             .process-flow { flex-direction: column; gap: 20px; }
             .process-arrow { transform: rotate(90deg); }
         }
@@ -1772,6 +1772,12 @@
         function closeModal() {
             document.getElementById('serviceModal').classList.remove('active');
             document.body.style.overflow = 'auto';
+            // Stop video when closing modal
+            const videos = document.querySelectorAll('.modal-video-inline video, .modal-body video');
+            videos.forEach(v => {
+                v.pause();
+                v.currentTime = 0;
+            });
             // Remove particles
             const particles = document.querySelector('.modal-particles');
             if (particles) particles.remove();
