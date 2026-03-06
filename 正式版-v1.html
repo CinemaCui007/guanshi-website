@@ -1,0 +1,1743 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>观世映画 | AIGC Creative Studio</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400&family=Syne:wght@400;500;600;700;800&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+    <style>
+        :root {
+            --bg: #030303;
+            --text: #E0E0E0;
+            --text-dim: #404040;
+            --accent: #0EA5E0;
+            --accent-glow: rgba(14, 165, 224, 0.5);
+            --dark: #080808;
+            --mono: 'JetBrains Mono', monospace;
+            --display: 'Syne', sans-serif;
+            --body: 'Outfit', sans-serif;
+        }
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
+        
+        body {
+            font-family: var(--body);
+            background: var(--bg);
+            color: var(--text);
+            overflow-x: hidden;
+        }
+        
+        .grid-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+                              linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+            background-size: 50px 50px;
+            z-index: -1;
+            pointer-events: none;
+        }
+        
+        .scanline {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,0,0,0.15) 3px, rgba(0,0,0,0.15) 6px);
+            pointer-events: none;
+            z-index: 9999;
+            opacity: 0.25;
+        }
+        
+        .glow { text-shadow: 0 0 30px var(--accent-glow), 0 0 60px var(--accent-glow); }
+        
+        .preloader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--bg);
+            z-index: 9998;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .terminal { width: 340px; }
+        .terminal-header { display: flex; gap: 5px; margin-bottom: 8px; }
+        .dot { width: 9px; height: 9px; border-radius: 50%; }
+        .dot.red { background: #FF5F56; }
+        .dot.yellow { background: #FFBD2E; }
+        .dot.green { background: #27C93F; }
+        
+        .terminal-body {
+            background: #070707;
+            padding: 10px 14px;
+            border-radius: 5px;
+            font-family: var(--mono);
+            font-size: 9px;
+            line-height: 1.9;
+            color: #333;
+        }
+        
+        .line { margin-bottom: 4px; opacity: 0; }
+        .prompt { color: #444; }
+        .cmd { color: #666; }
+        .output { color: #222; }
+        
+        nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            padding: 15px 35px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 1000;
+            background: rgba(3,3,3,0.85);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid #0f0f0f;
+        }
+        
+        .logo { font-family: var(--display); font-size: 14px; font-weight: 600; letter-spacing: 0.3em; }
+        .nav-links { display: flex; gap: 25px; list-style: none; }
+        .nav-links a { color: var(--text); text-decoration: none; font-size: 9px; font-weight: 400; letter-spacing: 0.15em; text-transform: uppercase; opacity: 0.4; transition: opacity 0.3s; }
+        .nav-links a:hover { opacity: 1; }
+        
+        .hero { background: radial-gradient(ellipse at 30% 20%, #0a1520 0%, #030507 50%, #010203 100%);
+            height: 100vh;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+        
+        .hero-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; }
+        
+        .hero-video {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            opacity: 0.25;
+            filter: saturate(0.4) contrast(1.1);
+        }
+        
+        .hero-gradient {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(ellipse at 50% 50%, transparent 0%, var(--bg) 70%);
+            z-index: 1;
+        }
+        
+        .float-element {
+            position: absolute;
+            font-family: var(--mono);
+            font-size: 8px;
+            color: var(--accent);
+            opacity: 0.3;
+            pointer-events: none;
+        }
+        
+        .hero-content { position: relative; z-index: 2; text-align: center; }
+        
+        .hero-label { font-family: var(--mono); font-size: 8px; letter-spacing: 0.7em; color: var(--text-dim); text-transform: uppercase; margin-bottom: 15px; }
+        
+        .hero-title { font-family: var(--display); font-size: clamp(70px, 24vw, 400px); font-weight: 800; line-height: 0.82; letter-spacing: -0.05em; }
+        
+        .hero-subtitle { font-size: 12px; font-weight: 300; letter-spacing: 0.25em; color: var(--text-dim); margin-top: 18px; }
+        
+        .hero-code { text-align: left; max-width: 320px; margin: 30px auto 0; background: rgba(8,8,8,0.9); border: 1px solid #111; padding: 10px 14px; }
+        
+        .code-line { font-family: var(--mono); font-size: 8px; line-height: 1.8; color: #333; }
+        .code-key { color: #444; }
+        .code-str { color: #666; }
+        .code-num { color: #333; }
+        
+        .scroll-indicator { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 8px; z-index: 10; }
+        .scroll-line { width: 1px; height: 40px; background: linear-gradient(to bottom, var(--accent), transparent); animation: scrollPulse 2s ease-in-out infinite; }
+        @keyframes scrollPulse { 0%, 100% { transform: scaleY(1); opacity: 1; } 50% { transform: scaleY(1.3); opacity: 0.5; } }
+        .scroll-text { font-family: var(--mono); font-size: 7px; letter-spacing: 0.3em; color: var(--text-dim); }
+        
+        .tech-section { padding: 60px 35px; background: var(--dark); border-top: 1px solid #0a0a0a; border-bottom: 1px solid #0a0a0a; }
+        .tech-label { font-family: var(--mono); font-size: 8px; letter-spacing: 0.5em; color: var(--text-dim); text-transform: uppercase; margin-bottom: 25px; }
+        .tech-grid { display: flex; flex-wrap: wrap; gap: 10px; }
+        .tech-tag { padding: 6px 14px; background: #0a0a0a; border: 1px solid #141414; font-family: var(--mono); font-size: 8px; color: #444; transition: all 0.3s; }
+        .tech-tag:hover { border-color: var(--accent); color: var(--text); box-shadow: 0 0 25px rgba(220,38,38,0.15); }
+        
+        section { min-height: 100vh; padding: 80px 35px; position: relative; }
+        
+        .video-section { background: var(--dark); padding: 60px 35px; }
+        .section-header { margin-bottom: 40px; }
+        .section-label { font-family: var(--mono); font-size: 8px; letter-spacing: 0.5em; color: var(--text-dim); text-transform: uppercase; margin-bottom: 8px; }
+        .section-title { font-family: var(--display); font-size: clamp(40px, 14vw, 140px); font-weight: 700; line-height: 0.9; }
+        
+        .video-grid { display: grid; grid-template-columns: repeat(6, 1fr); grid-template-rows: repeat(2, 240px); gap: 2px; background: #0d0d0d; }
+        .video-cell { position: relative; background: #070707; overflow: hidden; cursor: pointer; }
+        .video-cell img, .video-cell video { width: 100%; height: 100%; object-fit: cover; opacity: 0.5; transition: all 0.8s; }
+        .video-cell:hover img, .video-cell:hover video { opacity: 1; transform: scale(1.05); }
+        .video-cell:nth-child(1) { grid-column: span 3; grid-row: span 2; }
+        .video-cell:nth-child(2) { grid-column: span 3; }
+        .video-cell:nth-child(3) { grid-column: span 2; }
+        .video-cell:nth-child(4) { grid-column: span 2; }
+        .video-tag { position: absolute; top: 10px; left: 10px; font-family: var(--mono); font-size: 7px; letter-spacing: 0.15em; color: var(--text); background: rgba(0,0,0,0.85); padding: 3px 7px; text-transform: uppercase; }
+        .video-title { position: absolute; bottom: 10px; left: 10px; font-family: var(--display); font-size: 14px; font-weight: 600; }
+        .video-play { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 38px; height: 38px; border: 1px solid rgba(255,255,255,0.15); border-radius: 50%; display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.3s; }
+        .video-cell:hover .video-play { opacity: 1; }
+        .video-play::after { content: ''; width: 0; height: 0; border-left: 8px solid #fff; border-top: 5px solid transparent; border-bottom: 5px solid transparent; margin-left: 2px; }
+        
+        .services-section { background: var(--bg); }
+        .services-list { margin-top: 40px; }
+        .service-row { padding: 25px 0; border-bottom: 1px solid #0c0c0c; display: grid; grid-template-columns: 40px 1fr auto; align-items: center; cursor: pointer; transition: all 0.3s; }
+        .service-row:hover { padding-left: 12px; }
+        .service-num { font-family: var(--mono); font-size: 8px; color: var(--text-dim); }
+        .service-name { font-family: var(--display); font-size: clamp(20px, 2.5vw, 34px); font-weight: 500; }
+        .service-arrow { font-size: 16px; color: var(--text-dim); opacity: 0; transform: translateX(-10px); transition: all 0.3s; }
+        .service-row:hover .service-arrow { opacity: 1; transform: translateX(0); }
+        
+        .about-section { display: grid; grid-template-columns: 1fr 1fr; min-height: 100vh; }
+        .about-content { padding: 80px; display: flex; flex-direction: column; justify-content: center; }
+        .about-title { font-family: var(--display); font-size: clamp(24px, 3.5vw, 42px); font-weight: 600; line-height: 1.18; margin-bottom: 18px; }
+        .about-text { font-size: 12px; line-height: 2; color: var(--text-dim); max-width: 340px; }
+        .about-visual { position: relative; overflow: hidden; }
+        .about-visual img { width: 100%; height: 100%; object-fit: cover; filter: grayscale(100%) brightness(0.7); transition: filter 0.5s; }
+        .about-visual:hover img { filter: grayscale(0%) brightness(1); }
+        
+        .stats-section { padding: 60px 35px; background: var(--dark); display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+        .stat-item { text-align: center; }
+        .stat-num { font-family: var(--display); font-size: clamp(36px, 7vw, 80px); font-weight: 700; }
+        .stat-label { font-family: var(--mono); font-size: 7px; letter-spacing: 0.25em; color: var(--text-dim); margin-top: 6px; text-transform: uppercase; }
+        
+        /* Why Choose Us */
+        .why-section { padding: 40px 35px; background: var(--bg); }
+        .why-grid { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+        .why-card { background: var(--dark); border: 1px solid #111; padding: 30px; transition: all 0.3s; }
+        .why-card:hover { border-color: var(--accent); transform: translateY(-3px); }
+        .why-num { font-family: var(--mono); font-size: 10px; color: var(--accent); margin-bottom: 15px; }
+        .why-title { font-family: var(--display); font-size: 16px; font-weight: 600; margin-bottom: 10px; color: #fff; }
+        .why-desc { font-size: 12px; color: var(--text-dim); line-height: 1.7; }
+        
+        /* Section Divider */
+        .section-divider { 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            padding: 40px 35px; 
+            background: var(--bg); 
+            gap: 20px; 
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .section-divider::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 300px;
+            height: 1px;
+            background: radial-gradient(ellipse, rgba(14,165,233,0.15) 0%, transparent 70%);
+        }
+        
+        .divider-line { flex: 1; max-width: 180px; height: 1px; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent); }
+        .divider-dots { display: flex; gap: 8px; align-items: center; }
+        .divider-dots span { width: 4px; height: 4px; background: var(--accent); border-radius: 50%; opacity: 0.3; }
+        .divider-dots span:nth-child(2) { opacity: 0.6; width: 6px; height: 6px; }
+        .divider-dots span:nth-child(3) { opacity: 0.3; }
+        
+        /* Floating background particles */
+        .bg-particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: -1;
+            overflow: hidden;
+        }
+        
+        .bg-particle {
+            position: absolute;
+            width: 2px;
+            height: 2px;
+            background: rgba(255,255,255,0.15);
+            border-radius: 50%;
+            animation: float-bg 20s infinite linear;
+        }
+        
+        .bg-particle:nth-child(1) { left: 10%; top: 20%; animation-delay: 0s; animation-duration: 25s; }
+        .bg-particle:nth-child(2) { left: 20%; top: 60%; animation-delay: -5s; animation-duration: 30s; }
+        .bg-particle:nth-child(3) { left: 30%; top: 40%; animation-delay: -10s; animation-duration: 22s; }
+        .bg-particle:nth-child(4) { left: 40%; top: 80%; animation-delay: -3s; animation-duration: 28s; }
+        .bg-particle:nth-child(5) { left: 50%; top: 30%; animation-delay: -8s; animation-duration: 26s; }
+        .bg-particle:nth-child(6) { left: 60%; top: 70%; animation-delay: -12s; animation-duration: 24s; }
+        .bg-particle:nth-child(7) { left: 70%; top: 50%; animation-delay: -6s; animation-duration: 32s; }
+        .bg-particle:nth-child(8) { left: 80%; top: 20%; animation-delay: -15s; animation-duration: 27s; }
+        .bg-particle:nth-child(9) { left: 90%; top: 60%; animation-delay: -2s; animation-duration: 23s; }
+        .bg-particle:nth-child(10) { left: 15%; top: 85%; animation-delay: -7s; animation-duration: 29s; }
+        .bg-particle:nth-child(11) { left: 25%; top: 15%; animation-delay: -11s; animation-duration: 31s; }
+        .bg-particle:nth-child(12) { left: 35%; top: 55%; animation-delay: -4s; animation-duration: 26s; }
+        .bg-particle:nth-child(13) { left: 45%; top: 25%; animation-delay: -9s; animation-duration: 24s; }
+        .bg-particle:nth-child(14) { left: 55%; top: 75%; animation-delay: -13s; animation-duration: 28s; }
+        .bg-particle:nth-child(15) { left: 65%; top: 45%; animation-delay: -1s; animation-duration: 25s; }
+        
+        @keyframes float-bg {
+            0% { transform: translateY(100vh) translateX(0); opacity: 0; }
+            10% { opacity: 0.3; }
+            90% { opacity: 0.3; }
+            100% { transform: translateY(-100vh) translateX(30px); opacity: 0; }
+        }
+        
+        /* Process */
+        .process-section { padding: 40px 35px; background: var(--dark); }
+        .process-flow { max-width: 1200px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+        .process-step { text-align: center; flex: 1; }
+        .process-icon { font-size: 28px; margin-bottom: 12px; }
+        .process-title { font-family: var(--display); font-size: 14px; font-weight: 600; margin-bottom: 6px; color: #fff; }
+        .process-desc { font-size: 11px; color: var(--text-dim); }
+        .process-arrow { font-size: 20px; color: var(--text-dim); flex-shrink: 0; }
+        
+        @media (max-width: 768px) {
+            .why-grid { grid-template-columns: repeat(2, 1fr); }
+            .process-flow { flex-direction: column; gap: 20px; }
+            .process-arrow { transform: rotate(90deg); }
+        }
+        
+        .contact-section { padding: 100px 35px; min-height: 70vh; display: flex; flex-direction: column; justify-content: center; }
+        .contact-title { font-family: var(--display); font-size: clamp(45px, 16vw, 200px); font-weight: 800; line-height: 0.85; }
+        .contact-subtitle { font-size: 13px; color: var(--text-dim); margin: 30px 0; }
+        .contact-links { display: flex; gap: 25px; }
+        .contact-link { font-size: 12px; font-weight: 400; color: var(--text); text-decoration: none; padding-bottom: 3px; border-bottom: 1px solid #222; transition: all 0.3s; }
+        .contact-link:hover { color: var(--accent); border-color: var(--accent); }
+        
+        .contact-card-section { padding: 40px 35px 80px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; background: var(--dark); }
+        .contact-card { background: #080808; border: 1px solid #111; padding: 25px; transition: all 0.3s; }
+        .contact-card:hover { border-color: var(--accent); transform: translateY(-3px); }
+        .contact-card-icon { font-size: 24px; margin-bottom: 15px; }
+        .contact-card-title { font-family: var(--display); font-size: 14px; font-weight: 600; margin-bottom: 8px; }
+        .contact-card-text { font-size: 11px; color: var(--text-dim); line-height: 1.7; }
+        
+        /* Full Page Modal - 黑白灰 + 少量蓝色 */
+        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #0a0a0a; z-index: 9999; display: none; overflow-y: auto; }
+        .modal.active { display: block; }
+        
+        .modal-hero { 
+            min-height: 100vh; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            background: #050505;
+            position: relative; 
+            padding: 0;
+            overflow: hidden;
+        }
+        
+        /* 网格背景 */
+        .modal-hero-grid {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 200%;
+            background-image: 
+                linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+            pointer-events: none;
+            transform: translateY(0);
+            transition: transform 0.1s ease-out;
+        }
+        
+        /* 粒子容器 */
+        .modal-particles {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            overflow: hidden;
+        }
+        
+        /* 粒子点 */
+        .particle {
+            position: absolute;
+            width: 2px;
+            height: 2px;
+            background: rgba(255,255,255,0.5);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+        
+        /* 粒子连线 */
+        .particle-line {
+            position: absolute;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+            transform-origin: left center;
+            pointer-events: none;
+        }
+        
+        /* 浮动光点 */
+        .glow-dot {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: rgba(14, 165, 233, 0.6);
+            border-radius: 50%;
+            box-shadow: 0 0 10px rgba(14, 165, 233, 0.4), 0 0 20px rgba(14, 165, 233, 0.2);
+            animation: glow-pulse 3s ease-in-out infinite;
+        }
+        
+        @keyframes glow-pulse {
+            0%, 100% { opacity: 0.3; transform: scale(1); }
+            50% { opacity: 0.8; transform: scale(1.2); }
+        }
+        
+        .modal-hero-content { 
+            text-align: center; 
+            max-width: 900px; 
+            padding: 80px 40px;
+            position: relative;
+            z-index: 2;
+        }
+        
+        .modal-label { 
+            font-family: var(--mono); 
+            font-size: 10px; 
+            color: #0EA5E0; 
+            letter-spacing: 0.6em; 
+            margin-bottom: 25px; 
+            text-transform: uppercase;
+            opacity: 0.8;
+        }
+        
+        .modal-title { 
+            font-family: var(--display); 
+            font-size: clamp(48px, 12vw, 120px); 
+            font-weight: 800; 
+            line-height: 1.02; 
+            color: #fff;
+            margin-bottom: 25px;
+            text-shadow: 0 0 60px rgba(14, 165, 233, 0.3);
+        }
+        
+        .modal-hero-desc {
+            font-size: 16px;
+            line-height: 1.8;
+            color: #888;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        
+        /* Floating elements */
+        .modal-float {
+            position: absolute;
+            font-family: var(--mono);
+            font-size: 9px;
+            color: var(--accent);
+            opacity: 0.2;
+            pointer-events: none;
+        }
+        
+        /* Content sections */
+        .modal-body { 
+            background: #080808;
+            position: relative;
+            min-height: 100vh;
+        }
+        
+        .modal-section { 
+            padding: 50px 50px; 
+            max-width: 1100px; 
+            margin: 0 auto;
+            position: relative;
+        }
+        
+        .modal-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50px;
+            right: 50px;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(14, 165, 233, 0.3), transparent);
+        }
+        
+        .modal-section-header {
+            display: grid;
+            grid-template-columns: 140px 1fr;
+            gap: 40px;
+            align-items: start;
+            margin-bottom: 40px;
+        }
+        
+        .modal-section-num { 
+            font-family: var(--display); 
+            font-size: 64px; 
+            font-weight: 700; 
+            color: #fff; 
+            opacity: 0.12; 
+            line-height: 1;
+            letter-spacing: -0.02em;
+        }
+        
+        .modal-section-title-group { }
+        
+        .modal-section-title { 
+            font-family: var(--display); 
+            font-size: 28px; 
+            font-weight: 600; 
+            margin-bottom: 10px; 
+            color: #fff; 
+            letter-spacing: -0.01em;
+        }
+        
+        .modal-section-subtitle {
+            font-size: 13px;
+            color: #666;
+            line-height: 1.7;
+            max-width: 600px;
+        }
+        
+        /* Feature cards - 精致设计 */
+        .modal-grid { 
+            display: grid; 
+            grid-template-columns: repeat(3, 1fr); 
+            gap: 16px; 
+            margin-top: 28px;
+        }
+        
+        .modal-card { 
+            background: linear-gradient(180deg, #0f0f0f 0%, #0a0a0a 100%);
+            border: 1px solid #1a1a1a;
+            padding: 24px;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+        }
+        
+        .modal-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+        }
+        
+        .modal-card:hover { 
+            border-color: #333; 
+            transform: translateY(-6px);
+            background: linear-gradient(180deg, #141414 0%, #0d0d0d 100%);
+        }
+        
+        .modal-card:hover .modal-card-title {
+            color: #fff;
+        }
+        
+        .modal-card-icon { 
+            font-size: 28px; 
+            margin-bottom: 14px;
+            display: block;
+            filter: grayscale(100%);
+            transition: filter 0.3s;
+        }
+        
+        .modal-card:hover .modal-card-icon {
+            filter: grayscale(0%);
+        }
+        
+        .modal-card-title { 
+            font-family: var(--display); 
+            font-size: 15px; 
+            font-weight: 600; 
+            margin-bottom: 8px; 
+            color: #ccc; 
+            transition: color 0.3s;
+        }
+        
+        .modal-card-desc { 
+            font-size: 11px; 
+            color: #555; 
+            line-height: 1.6; 
+        }
+        
+        /* Case cards */
+        .modal-grid-2 { 
+            display: grid; 
+            grid-template-columns: repeat(2, 1fr); 
+            gap: 16px; 
+        }
+        
+        .modal-case { 
+            display: flex; 
+            gap: 16px; 
+            background: linear-gradient(180deg, #0f0f0f 0%, #0a0a0a 100%);
+            border: 1px solid #1a1a1a;
+            padding: 12px;
+            border-radius: 4px;
+            transition: all 0.3s;
+        }
+        
+        .modal-case:hover {
+            border-color: #2a2a2a;
+            transform: translateX(4px);
+        }
+            border-radius: 6px;
+            transition: all 0.3s;
+        }
+        
+        .modal-case:hover { 
+            border-color: var(--accent);
+            transform: translateX(5px);
+        }
+        
+        .modal-case-img { 
+            width: 160px; 
+            height: 100px; 
+            object-fit: cover; 
+            border-radius: 3px; 
+            flex-shrink: 0;
+            opacity: 0.6;
+            transition: all 0.4s;
+            filter: grayscale(100%);
+        }
+        
+        .modal-case:hover .modal-case-img { 
+            opacity: 0.9;
+            filter: grayscale(0%);
+        }
+        
+        .modal-case-info { 
+            display: flex; 
+            flex-direction: column; 
+            justify-content: center; 
+            flex: 1;
+        }
+        
+        .modal-case-tag { 
+            font-family: var(--mono); 
+            font-size: 8px; 
+            color: #666; 
+            letter-spacing: 0.15em; 
+            text-transform: uppercase; 
+            margin-bottom: 8px; 
+        }
+        
+        .modal-case-title { 
+            font-family: var(--display); 
+            font-size: 16px; 
+            font-weight: 600; 
+            margin-bottom: 6px; 
+            color: #ddd; 
+        }
+        
+        .modal-case-desc { 
+            font-size: 11px; 
+            color: #555; 
+            line-height: 1.5;
+        }
+        
+        /* Client tags */
+        .modal-client-list { 
+            display: flex; 
+            flex-wrap: wrap; 
+            gap: 10px; 
+            margin-top: 16px; 
+        }
+        
+        .modal-client-tag { 
+            background: #0c0c0c;
+            border: 1px solid #1a1a1a;
+            padding: 10px 18px; 
+            border-radius: 3px; 
+            font-size: 11px; 
+            color: #666; 
+            transition: all 0.3s; 
+        }
+        
+        .modal-client-tag:hover { 
+            border-color: #444; 
+            color: #aaa;
+            background: #111;
+        }
+        
+        /* Section divider */
+        .modal-section {
+            padding: 50px 50px;
+            max-width: 1100px;
+            margin: 0 auto;
+            position: relative;
+        }
+        
+        .modal-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50px;
+            right: 50px;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent);
+        }
+        
+        /* Navigation buttons */
+        .modal-back { 
+            position: fixed; 
+            top: 30px; 
+            left: 30px; 
+            font-family: var(--mono); 
+            font-size: 11px; 
+            color: #888; 
+            cursor: pointer; 
+            display: flex; 
+            align-items: center; 
+            gap: 8px; 
+            transition: all 0.3s; 
+            padding: 14px 22px; 
+            background: rgba(15, 15, 20, 0.8);
+            border: 1px solid #222;
+            border-radius: 8px;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+        }
+        
+        .modal-back:hover { 
+            color: var(--accent); 
+            border-color: var(--accent);
+            background: rgba(14, 165, 233, 0.1);
+        }
+        
+        .modal-back::before { content: '←'; margin-right: 6px; }
+        
+        .modal-close { 
+            position: fixed; 
+            top: 30px; 
+            right: 30px; 
+            font-size: 24px; 
+            cursor: pointer; 
+            color: #888; 
+            transition: 0.3s; 
+            width: 48px; 
+            height: 48px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            background: rgba(15, 15, 20, 0.8);
+            border: 1px solid #222;
+            border-radius: 8px;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+        }
+        
+        .modal-close:hover { 
+            color: var(--accent); 
+            border-color: var(--accent);
+            background: rgba(14, 165, 233, 0.1);
+            transform: rotate(90deg);
+        }
+        
+        /* Scroll indicator */
+        .modal-scroll {
+            position: absolute;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            z-index: 10;
+        }
+        
+        .modal-scroll-line {
+            width: 1px;
+            height: 50px;
+            background: linear-gradient(to bottom, var(--accent), transparent);
+            animation: scrollPulse 2s ease-in-out infinite;
+        }
+        
+        .modal-scroll-text {
+            font-family: var(--mono);
+            font-size: 8px;
+            letter-spacing: 0.3em;
+            color: #555;
+            text-transform: uppercase;
+        }
+        
+        @keyframes scrollPulse {
+            0%, 100% { transform: scaleY(1); opacity: 1; }
+            50% { transform: scaleY(1.3); opacity: 0.5; }
+        }
+        
+        @media (max-width: 768px) {
+            .modal-grid, .modal-grid-2 { grid-template-columns: 1fr; }
+            .modal-case { flex-direction: column; }
+            .modal-case-img { width: 100%; height: 180px; }
+            .modal-section-header { grid-template-columns: 1fr; gap: 15px; }
+            .modal-section-num { font-size: 48px; }
+            .modal-section { padding: 50px 25px; }
+            .modal-section-num { left: 25px; right: 25px; }
+            .modal-hero { min-height: 100vh; }
+            .modal-hero-content { padding: 60px 25px; }
+            .modal-back { top: 15px; left: 15px; padding: 10px 16px; }
+            .modal-close { top: 15px; right: 15px; }
+        }
+        .modal-close:hover { color: var(--accent); border-color: var(--accent); }
+        
+        @media (max-width: 768px) {
+            .modal-grid, .modal-grid-2 { grid-template-columns: 1fr; }
+            .modal-case { flex-direction: column; }
+            .modal-case-img { width: 100%; height: 140px; }
+            .modal-section { grid-template-columns: 1fr; padding: 45px 25px; gap: 15px; }
+            .modal-section-num { font-size: 36px; }
+            .modal-hero { padding: 60px 25px; min-height: 45vh; }
+            .modal-back { top: 15px; left: 15px; }
+            .modal-close { top: 15px; right: 15px; }
+        }
+        
+        footer { padding: 20px 35px; display: flex; justify-content: space-between; border-top: 1px solid #0a0a0a; }
+        footer p { font-size: 9px; color: var(--text-dim); }
+        
+        @media (max-width: 768px) {
+            nav { padding: 12px 18px; }
+            .nav-links { display: none; }
+            section { padding: 50px 18px; }
+            .video-grid { grid-template-columns: 1fr; grid-template-rows: auto; }
+            .video-cell:nth-child(1), .video-cell:nth-child(2), .video-cell:nth-child(3), .video-cell:nth-child(4) { grid-column: span 1; height: 160px; }
+            .tech-grid { gap: 6px; }
+            .tech-tag { padding: 5px 10px; font-size: 7px; }
+            .about-section { grid-template-columns: 1fr; }
+            .about-content { padding: 50px 18px; }
+            .stats-section { grid-template-columns: repeat(2, 1fr); }
+            .contact-links { flex-direction: column; gap: 15px; }
+            .contact-card-section { grid-template-columns: 1fr; }
+            footer { flex-direction: column; gap: 10px; text-align: center; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Background Particles -->
+    <div class="bg-particles">
+        <div class="bg-particle"></div>
+        <div class="bg-particle"></div>
+        <div class="bg-particle"></div>
+        <div class="bg-particle"></div>
+        <div class="bg-particle"></div>
+        <div class="bg-particle"></div>
+        <div class="bg-particle"></div>
+        <div class="bg-particle"></div>
+        <div class="bg-particle"></div>
+        <div class="bg-particle"></div>
+        <div class="bg-particle"></div>
+        <div class="bg-particle"></div>
+        <div class="bg-particle"></div>
+        <div class="bg-particle"></div>
+        <div class="bg-particle"></div>
+    </div>
+    
+    <div class="grid-bg"></div>
+    <div class="noise-overlay"></div>
+    <div class="glow-orb1"></div>
+    <div class="glow-orb2"></div>
+    <div class="scanline"></div>
+    
+    <div class="preloader">
+        <div class="terminal">
+            <div class="terminal-header">
+                <div class="dot red"></div>
+                <div class="dot yellow"></div>
+                <div class="dot green"></div>
+            </div>
+            <div class="terminal-body">
+                <div class="line"><span class="prompt">$</span> <span class="cmd">init guanshi</span></div>
+                <div class="line"><span class="output"># AIGC Studio v2.0</span></div>
+                <div class="line"><span class="prompt">$</span> <span class="cmd">load modules</span></div>
+                <div class="line"><span class="output"># AI / Video / Hardware</span></div>
+                <div class="line"><span class="prompt">$</span> <span class="cmd">ready</span></div>
+            </div>
+        </div>
+    </div>
+    
+    <nav>
+        <div class="logo">GUANSHI</div>
+        <ul class="nav-links">
+            <li><a href="#works">Work</a></li>
+            <li><a href="#services">Services</a></li>
+            <li><a href="#about">About</a></li>
+            <li><a href="#contact">Contact</a></li>
+        </ul>
+    </nav>
+    
+    <section class="hero">
+        <canvas class="hero-canvas" id="heroCanvas"></canvas>
+        <video class="hero-video" autoplay muted loop playsinline>
+            <source src="https://assets.mixkit.co/videos/preview/mixkit-abstract-blue-and-purple-lines-1382-large.mp4" type="video/mp4">
+        </video>
+        <div class="hero-gradient"></div>
+        
+        <div class="float-element" style="top: 20%; left: 10%;">AI</div>
+        <div class="float-element" style="top: 30%; right: 15%;">ML</div>
+        <div class="float-element" style="bottom: 25%; left: 20%;">AIGC</div>
+        <div class="float-element" style="bottom: 35%; right: 10%;">VIDEO</div>
+        
+        <div class="hero-content">
+            <div class="hero-label">AIGC Creative Studio — Beijing</div>
+            <h1 class="hero-title glow">观世<br>映画</h1>
+            <p class="hero-subtitle">Artificial Intelligence × Creative Excellence</p>
+            
+            <div class="hero-code">
+                <div class="code-line"><span class="code-key">const</span> guanshi = {</div>
+                <div class="code-line" style="padding-left:14px;"><span class="code-key">type</span>: <span class="code-str">"AIGC"</span>,</div>
+                <div class="code-line" style="padding-left:14px;"><span class="code-key">year</span>: <span class="code-num">2015</span>,</div>
+                <div class="code-line" style="padding-left:14px;"><span class="code-key">focus</span>: [<span class="code-str">"AI"</span>, <span class="code-str">"Video"</span>, <span class="code-str">"Hardware"</span>]</div>
+                <div class="code-line">};</div>
+            </div>
+        </div>
+        
+        <div class="scroll-indicator">
+            <div class="scroll-line"></div>
+            <span class="scroll-text">SCROLL</span>
+        </div>
+    </section>
+    
+    <div class="tech-section">
+        <div class="tech-label">Technologies</div>
+        <div class="tech-grid">
+            <span class="tech-tag">Artificial Intelligence</span>
+            <span class="tech-tag">Machine Learning</span>
+            <span class="tech-tag">Computer Vision</span>
+            <span class="tech-tag">Natural Language</span>
+            <span class="tech-tag">AIGC Generation</span>
+            <span class="tech-tag">Video Production</span>
+            <span class="tech-tag">3D Animation</span>
+            <span class="tech-tag">Motion Graphics</span>
+            <span class="tech-tag">Smart Hardware</span>
+            <span class="tech-tag">ESP32</span>
+            <span class="tech-tag">Raspberry Pi</span>
+            <span class="tech-tag">OpenClaw</span>
+        </div>
+    </div>
+    
+    <section class="video-section" id="works">
+        <div class="section-header">
+            <div class="section-label">Selected Work</div>
+            <h2 class="section-title">Projects</h2>
+        </div>
+        
+        <div class="video-grid">
+            <div class="video-cell">
+                <img src="极寒突围-封面.png" alt="极寒突围">
+                <div class="video-tag">Featured</div>
+                <div class="video-title">极寒突围</div>
+                <div class="video-play"></div>
+            </div>
+            
+            <div class="video-cell">
+                <img src="辛弃疾破阵子-封面.png" alt="辛弃疾破阵子">
+                <div class="video-tag">AIGC</div>
+                <div class="video-title">辛弃疾·破阵子</div>
+                <div class="video-play"></div>
+            </div>
+            
+            <div class="video-cell">
+                <img src="预告-封面.png" alt="预告">
+                <div class="video-tag">AIGC</div>
+                <div class="video-title">作品合集</div>
+                <div class="video-play"></div>
+            </div>
+            
+            <div class="video-cell">
+                <img src="https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=600" alt="P4">
+                <div class="video-title">更多作品 →</div>
+                <div class="video-play"></div>
+            </div>
+        </div>
+    </section>
+    
+    <section class="services-section" id="services">
+        <div class="section-header">
+            <div class="section-label">Services</div>
+            <h2 class="section-title">What We Do</h2>
+        </div>
+        
+        <div class="services-list">
+            <div class="service-row" onclick="openModal('aigc')">
+                <span class="service-num">01</span>
+                <span class="service-name">AIGC 内容创作</span>
+                <span class="service-arrow">→</span>
+            </div>
+            
+            <div class="service-row" onclick="openModal('tools')">
+                <span class="service-num">02</span>
+                <span class="service-name">AIGC 工具开发</span>
+                <span class="service-arrow">→</span>
+            </div>
+            
+            <div class="service-row" onclick="openModal('hardware')">
+                <span class="service-num">03</span>
+                <span class="service-name">智能硬件</span>
+                <span class="service-arrow">→</span>
+            </div>
+            
+            <div class="service-row" onclick="openModal('film')">
+                <span class="service-num">04</span>
+                <span class="service-name">传统影视制作</span>
+                <span class="service-arrow">→</span>
+            </div>
+        </div>
+    </section>
+    
+    <section class="about-section" id="about">
+        <div class="about-content">
+            <div class="section-label">About</div>
+            <h2 class="about-title">用科技赋能创意<br>让 AI 创造价值</h2>
+            <p class="about-text">观世映画文化传媒专注于 AIGC（人工智能生成内容）与传统影视制作。将前沿 AI 技术与艺术创意完美结合，为客户提供差异化数字内容解决方案。</p>
+        </div>
+        <div class="about-visual">
+            <img src="https://images.unsplash.com/photo-1497366216548-37526070297c?w=1000" alt="About">
+        </div>
+    </section>
+    
+    <section class="stats-section">
+        <div class="stat-item">
+            <div class="stat-num">500+</div>
+            <div class="stat-label">Projects</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-num">50+</div>
+            <div class="stat-label">Clients</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-num">10+</div>
+            <div class="stat-label">Awards</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-num">10</div>
+            <div class="stat-label">Years</div>
+        </div>
+    </section>
+    
+    <!-- Decorative Divider -->
+    <div class="section-divider">
+        <div class="divider-line"></div>
+        <div class="divider-dots">
+            <span></span><span></span><span></span>
+        </div>
+        <div class="divider-line"></div>
+    </div>
+    
+    <!-- Why Choose Us Section -->
+    <section class="why-section">
+        <div class="section-header" style="max-width: 1200px; margin: 0 auto 40px; padding: 60px 35px 0;">
+            <div class="section-label">Why Choose Us</div>
+            <h2 class="section-title">为什么选择观世映画</h2>
+        </div>
+        
+        <div class="why-grid">
+            <div class="why-card">
+                <div class="why-num">01</div>
+                <h3 class="why-title">AI + 创意结合</h3>
+                <p class="why-desc">前沿 AI 技术与资深创意团队完美结合，既保持技术领先，又不失艺术温度</p>
+            </div>
+            
+            <div class="why-card">
+                <div class="why-num">02</div>
+                <h3 class="why-title">一站式服务</h3>
+                <p class="why-desc">从策划、拍摄到后期制作，提供全流程服务，让项目交付更高效</p>
+            </div>
+            
+            <div class="why-card">
+                <div class="why-num">03</div>
+                <h3 class="why-title">丰富行业经验</h3>
+                <p class="why-desc">深耕影视行业多年，服务环球影城、阿里、完美世界等知名客户</p>
+            </div>
+            
+            <div class="why-card">
+                <div class="why-num">04</div>
+                <h3 class="why-title">自有技术团队</h3>
+                <p class="why-desc">自主研发 AIGC 工具，持续创新，为客户提供差异化解决方案</p>
+            </div>
+        </div>
+    </section>
+    
+    <!-- Decorative Divider -->
+    <div class="section-divider">
+        <div class="divider-line"></div>
+        <div class="divider-dots">
+            <span></span><span></span><span></span>
+        </div>
+        <div class="divider-line"></div>
+    </div>
+    
+    <!-- Process Section -->
+    <section class="process-section">
+        <div class="section-header" style="max-width: 1200px; margin: 0 auto 40px; padding: 60px 35px 0;">
+            <div class="section-label">Process</div>
+            <h2 class="section-title">工作流程</h2>
+        </div>
+        
+        <div class="process-flow">
+            <div class="process-step">
+                <div class="process-icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/></svg></div>
+                <div class="process-title">需求沟通</div>
+                <div class="process-desc">深入了解项目需求，定制化方案</div>
+            </div>
+            
+            <div class="process-arrow">→</div>
+            
+            <div class="process-step">
+                <div class="process-icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6M9 12h6M9 15h4"/></svg></div>
+                <div class="process-title">策划创意</div>
+                <div class="process-desc">脚本、分镜、风格设计</div>
+            </div>
+            
+            <div class="process-arrow">→</div>
+            
+            <div class="process-step">
+                <div class="process-icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="4" width="20" height="15" rx="2"/><circle cx="12" cy="11" r="3"/></svg></div>
+                <div class="process-title">拍摄制作</div>
+                <div class="process-desc">专业团队执行，高效高质</div>
+            </div>
+            
+            <div class="process-arrow">→</div>
+            
+            <div class="process-step">
+                <div class="process-icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg></div>
+                <div class="process-title">后期特效</div>
+                <div class="process-desc">剪辑、调色、AE特效合成</div>
+            </div>
+            
+            <div class="process-arrow">→</div>
+            
+            <div class="process-step">
+                <div class="process-icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
+                <div class="process-title">交付成片</div>
+                <div class="process-desc">多格式输出，全程无忧</div>
+            </div>
+        </div>
+    </section>
+    
+    <section class="contact-section" id="contact">
+        <div class="section-label">Contact</div>
+        <h2 class="contact-title">Let's<br>Create</h2>
+        <p class="contact-subtitle">开启您的 AIGC 之旅</p>
+        
+        <div class="contact-links">
+            <a href="mailto:contact@guanshi.cn" class="contact-link">Email</a>
+            <a href="#" class="contact-link">WeChat</a>
+            <a href="#" class="contact-link">+86 400-888-8888</a>
+        </div>
+    </section>
+    
+    <section class="contact-card-section">
+        <div class="contact-card">
+            <div class="contact-card-icon">📧</div>
+            <div class="contact-card-title">Email</div>
+            <div class="contact-card-text">contact@guanshi.cn<br>工作日 24小时内回复</div>
+        </div>
+        
+        <div class="contact-card">
+            <div class="contact-card-icon">📱</div>
+            <div class="contact-card-title">WeChat</div>
+            <div class="contact-card-text">扫码添加微信<br>获取定制方案</div>
+        </div>
+        
+        <div class="contact-card">
+            <div class="contact-card-icon">📍</div>
+            <div class="contact-card-title">Address</div>
+            <div class="contact-card-text">北京市朝阳区<br>观世映画文化传媒</div>
+        </div>
+    </section>
+    
+    <!-- Modal -->
+    <div class="modal" id="serviceModal">
+        <div class="modal-back" onclick="closeModal()">返回首页</div>
+        <div class="modal-close" onclick="closeModal()">×</div>
+        <div class="modal-hero">
+            <div class="modal-hero-grid"></div>
+            <div class="modal-particles"></div>
+            
+            <!-- Floating elements -->
+            <div class="modal-float" style="top: 15%; left: 10%;">01</div>
+            <div class="modal-float" style="top: 25%; right: 15%;">AI</div>
+            <div class="modal-float" style="bottom: 30%; left: 15%;">AIGC</div>
+            <div class="modal-float" style="bottom: 20%; right: 10%;">VIDEO</div>
+            
+            <div class="modal-hero-content">
+                <div class="modal-label" id="modalLabel"></div>
+                <h1 class="modal-title" id="modalTitle"></h1>
+                <p class="modal-hero-desc" id="modalDesc"></p>
+            </div>
+            
+            <div class="modal-scroll">
+                <div class="modal-scroll-line"></div>
+                <span class="modal-scroll-text">Scroll</span>
+            </div>
+        </div>
+        
+        <div class="modal-body" id="modalBody">
+        </div>
+    </div>
+    
+    <footer>
+        <p>© 2024 观世映画文化传媒 GuanShi</p>
+        <p>京ICP备xxxxxxxx号</p>
+    </footer>
+
+    <script>
+        // Hero Canvas - Particles with mouse interaction
+        const canvas = document.getElementById('heroCanvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        
+        const particles = [];
+        const particleCount = 60;
+        
+        let mouseX = canvas.width / 2;
+        let mouseY = canvas.height / 2;
+        
+        document.addEventListener('mousemove', (e) => {
+            mouseX = e.clientX;
+            mouseY = e.clientY;
+        });
+        
+        for (let i = 0; i < particleCount; i++) {
+            particles.push({
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height,
+                vx: (Math.random() - 0.5) * 0.4,
+                vy: (Math.random() - 0.5) * 0.4,
+                size: Math.random() * 1.5 + 0.5
+            });
+        }
+        
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            particles.forEach((p, i) => {
+                const dx = mouseX - p.x;
+                const dy = mouseY - p.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                
+                if (dist < 150) {
+                    const force = (150 - dist) / 150;
+                    p.x -= dx * force * 0.02;
+                    p.y -= dy * force * 0.02;
+                }
+                
+                p.x += p.vx;
+                p.y += p.vy;
+                
+                if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
+                if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
+                
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(14, 165, 224, ${0.3 + Math.random() * 0.2})`;
+                ctx.fill();
+                
+                particles.slice(i + 1).forEach(p2 => {
+                    const dx = p.x - p2.x;
+                    const dy = p.y - p2.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (dist < 100) {
+                        ctx.beginPath();
+                        ctx.moveTo(p.x, p.y);
+                        ctx.lineTo(p2.x, p2.y);
+                        ctx.strokeStyle = `rgba(14, 165, 224, ${0.08 * (1 - dist / 100)})`;
+                        ctx.stroke();
+                    }
+                });
+            });
+            
+            requestAnimationFrame(animate);
+        }
+        
+        animate();
+        
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+        
+        // GSAP
+        gsap.registerPlugin(ScrollTrigger);
+        
+        // Terminal
+        const lines = document.querySelectorAll('.line');
+        let idx = 0;
+        
+        function showLine() {
+            if (idx < lines.length) {
+                gsap.to(lines[idx], { opacity: 1, duration: 0.12 });
+                idx++;
+                setTimeout(showLine, 150);
+            } else {
+                setTimeout(() => {
+                    gsap.to('.preloader', { opacity: 0, duration: 0.35, onComplete: () => document.querySelector('.preloader').style.display = 'none' });
+                }, 250);
+            }
+        }
+        
+        setTimeout(showLine, 350);
+        
+        // Hero
+        gsap.from('.hero-title', { y: 60, opacity: 0, duration: 1.5, delay: 2, ease: 'power4.out' });
+        
+        // Float elements
+        gsap.to('.float-element', {
+            y: -20,
+            duration: 3,
+            repeat: -1,
+            yoyo: true,
+            ease: 'sine.inOut',
+            stagger: 0.3
+        });
+        
+        // Tech tags
+        gsap.from('.tech-tag', {
+            scrollTrigger: { trigger: '.tech-section', start: 'top 80%' },
+            y: 15,
+            opacity: 0,
+            duration: 0.4,
+            stagger: 0.04,
+            ease: 'power3.out'
+        });
+        
+        // Video cells
+        document.querySelectorAll('.video-cell').forEach((cell, i) => {
+            gsap.from(cell, { scrollTrigger: { trigger: cell, start: 'top 85%' }, y: 30, opacity: 0, duration: 0.6, delay: i * 0.06, ease: 'power3.out' });
+        });
+        
+        // Services
+        document.querySelectorAll('.service-row').forEach((row, i) => {
+            gsap.from(row, { scrollTrigger: { trigger: row, start: 'top 90%' }, x: -15, opacity: 0, duration: 0.4, delay: i * 0.05, ease: 'power3.out' });
+        });
+        
+        // Stats
+        document.querySelectorAll('.stat-num').forEach(stat => {
+            const target = parseInt(stat.textContent);
+            gsap.from(stat, { scrollTrigger: { trigger: stat, start: 'top 85%' }, textContent: 0, duration: 1.5, snap: { textContent: 1 } });
+        });
+        
+        // Contact cards
+        document.querySelectorAll('.contact-card').forEach((card, i) => {
+            gsap.from(card, { scrollTrigger: { trigger: card, start: 'top 90%' }, y: 20, opacity: 0, duration: 0.5, delay: i * 0.1, ease: 'power3.out' });
+        });
+        
+        // Modal functions
+        const serviceData = {
+            'aigc': {
+                label: '01 // AIGC CONTENT',
+                title: 'AIGC 内容创作',
+                shortDesc: '运用最先进的 AI 生成技术，打造创新、高效、高质量的视觉内容解决方案',
+                desc: '运用最先进的 AI 生成技术，为客户提供创新、高效、高质量的视觉内容解决方案。我们融合深度学习、计算机视觉与创意设计，打造引领行业的 AIGC 内容。',
+                features: ['AI 广告片策划与制作', 'AI 短视频/微电影创作', 'AI 视频特效合成', 'AI 图像生成与处理', 'AI 虚拟数字人', 'AI 风格迁移', 'AI 社交媒体内容', 'AI 批量素材生成'],
+                cases: [
+                    { title: '极寒突围', type: 'AIGC动画', desc: 'AI 生成动画短片' },
+                    { title: '辛弃疾·破阵子', type: 'AIGC古风', desc: 'AI 辅助古诗词动画' },
+                    { title: '作品合集', type: 'AIGC', desc: 'AIGC代表作品集' }
+                ],
+                clients: ['阿里', '环球影城', '完美世界', '第四范式']
+            },
+            'tools': {
+                label: '02 // AIGC TOOLS',
+                title: 'AIGC 工具开发',
+                shortDesc: '自主研发 AI 创作工具，让内容创作更高效、更智能',
+                desc: '自主研发适合业务的 AI 工具，让创作更高效。我们为客户提供定制化的 AI 解决方案，自主研发多款 AI 创作工具，提升工作效率，降低创作成本。',
+                features: ['AI 漫剧生成工具', 'AI 视频剪辑助手', 'AI 脚本生成系统', 'AI 素材库管理', 'AI 智能配音', 'AI 批量处理工具', 'AI 视频抠像', 'AI 风格迁移'],
+                products: [
+                    { title: 'AI 漫剧工具', desc: '一键生成漫剧视频，从脚本到成片全自动' },
+                    { title: 'AI 剪辑助手', desc: '智能剪辑与特效，快速产出成片' },
+                    { title: 'AI 素材库', desc: '智能管理和检索海量素材' }
+                ]
+            },
+            'hardware': {
+                label: '03 // SMART HARDWARE',
+                title: '智能硬件',
+                shortDesc: 'AI 技术与硬件结合，打造创新智能解决方案',
+                desc: '结合前沿 AI 技术与硬件设备，打造创新智能解决方案。我们提供从硬件设计到软件集成的完整服务，让 AI 能力延伸到物理世界。',
+                features: ['AI 交互装置', '智能展示系统', '边缘计算设备', '传感器集成', 'OpenClaw 机械臂控制', 'ESP32开发', '树莓派集成', '物联网设备接入'],
+                products: [
+                    { title: 'AI 交互装置', desc: '实时人脸识别、姿态检测交互' },
+                    { title: '智能展示屏', desc: '动态内容展示与 AI 语音交互' },
+                    { title: '边缘计算盒', desc: '本地化 AI 推理部署' }
+                ]
+            },
+            'film': {
+                label: '04 // FILM PRODUCTION',
+                title: '传统影视制作',
+                shortDesc: '资深团队打造精品内容，服务客户遍布各行各业',
+                desc: '资深团队打造精品内容。观世映画文化传媒总部位于北京，在山东、成都设有分公司，深耕影视行业多年，参与并制作了多部国内外优秀剧集。\n\n作为环球影城、完美世界游戏、第四范式年框供应商，获得客户一致好评。入选阿里供应商库，与国内外数十家一线媒体、企业长期友好合作。',
+                features: ['企业宣传片', '广告片拍摄制作', '网剧网大创作', '纪录片制作', '短视频策划摄制', '电视节目策划', '发布会承办', '晚会年会活动', '后期特效合成', '调色与音效'],
+                cases: [
+                    { title: '企业宣传片', desc: '品牌故事与企业形象片' },
+                    { title: '商业广告', desc: 'TVC广告与互联网广告' },
+                    { title: '纪录片', desc: '企业纪录片与人物专题' }
+                ],
+                clients: ['环球影城', '完美世界游戏', '第四范式', '阿里', '数十家一线媒体企业']
+            }
+        };
+        
+        function openModal(service) {
+            const data = serviceData[service];
+            if (!data) return;
+            
+            // Set hero content
+            document.getElementById('modalLabel').textContent = data.label;
+            document.getElementById('modalTitle').textContent = data.title;
+            document.getElementById('modalDesc').textContent = data.shortDesc || '';
+            
+            // Add particles and effects
+            const hero = document.querySelector('.modal-hero');
+            const modal = document.getElementById('serviceModal');
+            const grid = hero.querySelector('.modal-hero-grid');
+            const existingParticles = hero.querySelector('.modal-particles');
+            if (existingParticles) existingParticles.remove();
+            
+            // Create particles container
+            const particlesDiv = document.createElement('div');
+            particlesDiv.className = 'modal-particles';
+            
+            // Create white particles (random floating)
+            for (let i = 0; i < 40; i++) {
+                const p = document.createElement('div');
+                p.className = 'particle';
+                p.style.cssText = `
+                    left: ${Math.random() * 100}%;
+                    top: ${Math.random() * 100}%;
+                    animation: float-${i % 5 === 0 ? 'up' : 'drift'} ${8 + Math.random() * 10}s ease-in-out infinite;
+                    animation-delay: -${Math.random() * 10}s;
+                    opacity: ${0.2 + Math.random() * 0.4};
+                `;
+                particlesDiv.appendChild(p);
+            }
+            
+            // Add a few blue glow dots
+            for (let i = 0; i < 3; i++) {
+                const g = document.createElement('div');
+                g.className = 'glow-dot';
+                g.style.cssText = `
+                    left: ${20 + i * 30}%;
+                    top: ${30 + i * 20}%;
+                    animation-delay: -${i * 1.5}s;
+                `;
+                particlesDiv.appendChild(g);
+            }
+            
+            hero.insertBefore(particlesDiv, hero.firstChild);
+            
+            // Scroll effect - move grid and particles
+            let lastScroll = 0;
+            modal.addEventListener('scroll', () => {
+                const scrollY = modal.scrollTop;
+                const delta = scrollY - lastScroll;
+                lastScroll = scrollY;
+                
+                // Move grid
+                if (grid) {
+                    const currentTransform = grid.style.transform || 'translateY(0)';
+                    const match = currentTransform.match(/translateY\((-?\d+\.?\d*)px\)/);
+                    const currentY = match ? parseFloat(match[1]) : 0;
+                    grid.style.transform = `translateY(${currentY + delta * 0.3}px)`;
+                }
+                
+                // Move particles with scroll
+                particlesDiv.style.transform = `translateY(${scrollY * 0.2}px)`;
+                particlesDiv.style.opacity = Math.max(0.3, 1 - scrollY / 500);
+            });
+            
+            // Add floating animations
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes float-up {
+                    0%, 100% { transform: translateY(0) translateX(0); }
+                    25% { transform: translateY(-30px) translateX(10px); }
+                    50% { transform: translateY(-20px) translateX(-10px); }
+                    75% { transform: translateY(-40px) translateX(5px); }
+                }
+                @keyframes float-drift {
+                    0%, 100% { transform: translate(0, 0); }
+                    33% { transform: translate(15px, -20px); }
+                    66% { transform: translate(-10px, -30px); }
+                }
+            `;
+            document.head.appendChild(style);
+            
+            // Build body content
+            let html = `
+                <div class="modal-section">
+                    <div class="modal-section-header">
+                        <div class="modal-section-num">01</div>
+                        <div class="modal-section-title-group">
+                            <h3 class="modal-section-title">关于</h3>
+                            <p class="modal-section-subtitle">${data.desc.replace(/\n/g, '<br>')}</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            if (data.features) {
+                html += `
+                <div class="modal-section">
+                    <div class="modal-section-num">02</div>
+                    <div class="modal-section-content">
+                        <h3 class="modal-section-title">服务项目</h3>
+                        <div class="modal-grid">
+                            ${data.features.map(f => `
+                                <div class="modal-card">
+                                    <div class="modal-card-title">${f}</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                </div>`;
+            }
+            
+            let caseNum = data.features ? '03' : '02';
+            
+            if (data.cases) {
+                html += `
+                <div class="modal-section">
+                    <div class="modal-section-num">${caseNum}</div>
+                    <div class="modal-section-content">
+                        <h3 class="modal-section-title">代表案例</h3>
+                        <div class="modal-grid-2">
+                            ${data.cases.map(c => `
+                                <div class="modal-case">
+                                    <img class="modal-case-img" src="https://images.unsplash.com/photo-1574717024653-61fd2cf4d44d?w=300" alt="${c.title}">
+                                    <div class="modal-case-info">
+                                        <div class="modal-case-tag">${c.type}</div>
+                                        <div class="modal-case-title">${c.title}</div>
+                                        <div class="modal-case-desc">${c.desc}</div>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                </div>`;
+            }
+            
+            let prodNum = data.features && data.cases ? '04' : (data.features ? '03' : '02');
+            
+            if (data.products) {
+                html += `
+                <div class="modal-section">
+                    <div class="modal-section-num">${prodNum}</div>
+                    <div class="modal-section-content">
+                        <h3 class="modal-section-title">核心产品</h3>
+                        <div class="modal-grid-2">
+                            ${data.products.map(p => `
+                                <div class="modal-card">
+                                    <div class="modal-card-title">${p.title}</div>
+                                    <div class="modal-card-desc">${p.desc}</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                </div>`;
+            }
+            
+            let clientNum = '04';
+            if (data.products) clientNum = '05';
+            else if (data.cases) clientNum = '04';
+            else if (data.features) clientNum = '03';
+            
+            if (data.clients) {
+                html += `
+                <div class="modal-section">
+                    <div class="modal-section-num">${clientNum}</div>
+                    <div class="modal-section-content">
+                        <h3 class="modal-section-title">合作客户</h3>
+                        <div class="modal-client-list">
+                            ${data.clients.map(c => `<div class="modal-client-tag">${c}</div>`).join('')}
+                        </div>
+                    </div>
+                </div>`;
+            }
+            
+            document.getElementById('modalBody').innerHTML = html;
+            document.getElementById('serviceModal').classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+        
+        function closeModal() {
+            document.getElementById('serviceModal').classList.remove('active');
+            document.body.style.overflow = 'auto';
+            // Remove particles
+            const particles = document.querySelector('.modal-particles');
+            if (particles) particles.remove();
+        }
+        
+        document.getElementById('serviceModal').addEventListener('click', (e) => {
+            if (e.target.id === 'serviceModal') closeModal();
+        });
+        
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeModal();
+        });
+        
+        // Modal particles - Nfinitepaper style
+        let modalParticleAnim = null;
+        function initModalParticles(canvas) {
+            const ctx = canvas.getContext('2d');
+            canvas.width = canvas.offsetWidth;
+            canvas.height = canvas.offsetHeight;
+            
+            let mouseX = canvas.width / 2;
+            let mouseY = canvas.height / 2;
+            
+            document.addEventListener('mousemove', (e) => {
+                const modal = document.getElementById('serviceModal');
+                if (modal.classList.contains('active')) {
+                    const rect = canvas.getBoundingClientRect();
+                    mouseX = e.clientX - rect.left;
+                    mouseY = e.clientY - rect.top;
+                }
+            });
+            
+            const particles = [];
+            const particleCount = 80;
+            const connectionDistance = 150;
+            const mouseDistance = 120;
+            
+            // Initialize particles with more natural movement
+            for (let i = 0; i < particleCount; i++) {
+                particles.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    vx: (Math.random() - 0.5) * 0.8,
+                    vy: (Math.random() - 0.5) * 0.8,
+                    size: Math.random() * 2.5 + 1,
+                    baseSpeed: Math.random() * 0.3 + 0.2,
+                    angle: Math.random() * Math.PI * 2,
+                    angleSpeed: (Math.random() - 0.5) * 0.01
+                });
+            }
+            
+            // Create gradient
+            const gradient = ctx.createRadialGradient(
+                canvas.width / 2, canvas.height / 2, 0,
+                canvas.width / 2, canvas.height / 2, canvas.width / 2
+            );
+            gradient.addColorStop(0, 'rgba(14, 165, 233, 0.15)');
+            gradient.addColorStop(1, 'rgba(14, 165, 233, 0)');
+            
+            let time = 0;
+            
+            function animate() {
+                time += 0.005;
+                
+                // Clear with slight fade for trail effect
+                ctx.fillStyle = 'rgba(8, 8, 12, 0.15)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                // Draw background gradient
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                // Update and draw particles
+                particles.forEach((p, i) => {
+                    // Natural flowing movement
+                    p.angle += p.angleSpeed;
+                    p.vx += Math.cos(p.angle) * 0.02;
+                    p.vy += Math.sin(p.angle) * 0.02;
+                    
+                    // Limit velocity
+                    const speed = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
+                    if (speed > p.baseSpeed * 2) {
+                        p.vx = (p.vx / speed) * p.baseSpeed * 2;
+                        p.vy = (p.vy / speed) * p.baseSpeed * 2;
+                    }
+                    
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    
+                    // Wrap around edges
+                    if (p.x < 0) p.x = canvas.width;
+                    if (p.x > canvas.width) p.x = 0;
+                    if (p.y < 0) p.y = canvas.height;
+                    if (p.y > canvas.height) p.y = 0;
+                    
+                    // Mouse interaction - more fluid
+                    const dx = mouseX - p.x;
+                    const dy = mouseY - p.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (dist < mouseDistance) {
+                        const force = (mouseDistance - dist) / mouseDistance;
+                        p.x -= dx * force * 0.03;
+                        p.y -= dy * force * 0.03;
+                    }
+                    
+                    // Draw particle with glow
+                    const opacity = 0.4 + Math.sin(time * 2 + i) * 0.2;
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                    ctx.fillStyle = `rgba(14, 165, 233, ${opacity})`;
+                    ctx.shadowBlur = 10;
+                    ctx.shadowColor = 'rgba(14, 165, 233, 0.5)';
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
+                    
+                    // Connect nearby particles - more connections like nfinitepaper
+                    particles.slice(i + 1).forEach(p2 => {
+                        const dx = p.x - p2.x;
+                        const dy = p.y - p2.y;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+                        
+                        if (dist < connectionDistance) {
+                            const opacity = (1 - dist / connectionDistance) * 0.25;
+                            ctx.beginPath();
+                            ctx.moveTo(p.x, p.y);
+                            ctx.lineTo(p2.x, p2.y);
+                            ctx.strokeStyle = `rgba(14, 165, 233, ${opacity})`;
+                            ctx.lineWidth = 0.8;
+                            ctx.stroke();
+                        }
+                    });
+                    
+                    // Connect to mouse
+                    const mdx = mouseX - p.x;
+                    const mdy = mouseY - p.y;
+                    const mdist = Math.sqrt(mdx * mdx + mdy * mdy);
+                    
+                    if (mdist < mouseDistance * 1.5) {
+                        const opacity = (1 - mdist / (mouseDistance * 1.5)) * 0.3;
+                        ctx.beginPath();
+                        ctx.moveTo(p.x, p.y);
+                        ctx.lineTo(mouseX, mouseY);
+                        ctx.strokeStyle = `rgba(14, 165, 233, ${opacity})`;
+                        ctx.lineWidth = 0.6;
+                        ctx.stroke();
+                    }
+                });
+                
+                modalParticleAnim = requestAnimationFrame(animate);
+            }
+            animate();
+        }
+    </script>
+</body>
+</html>
