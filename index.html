@@ -1780,16 +1780,24 @@
         }
         
         function closeModal() {
-            document.getElementById('serviceModal').classList.remove('active');
+            const modal = document.getElementById('serviceModal');
+            modal.classList.remove('active');
             document.body.style.overflow = 'auto';
-            // Stop video when closing modal
-            const videos = document.querySelectorAll('.modal-video-inline video, .modal-body video');
+            
+            // Stop and remove all videos in modal
+            const videos = modal.querySelectorAll('video');
             videos.forEach(v => {
                 v.pause();
-                v.currentTime = 0;
+                v.src = '';
+                v.load();
             });
+            
+            // Remove video elements from DOM
+            const videoContainers = modal.querySelectorAll('.modal-video-inline, .modal-video-container');
+            videoContainers.forEach(c => c.innerHTML = '');
+            
             // Remove particles
-            const particles = document.querySelector('.modal-particles');
+            const particles = modal.querySelector('.modal-particles');
             if (particles) particles.remove();
         }
         
